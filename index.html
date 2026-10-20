@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ravindra College Bus Tracker — Demo</title>
+<style>
+:root{--navy:#102a43;--blue:#1769aa;--pale:#eaf4ff;--green:#147d52}*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f3f6fa;color:#172b4d}.top{background:linear-gradient(135deg,#102a43,#1769aa);color:white;padding:25px 18px 28px;border-radius:0 0 24px 24px}.brand{font-size:13px;letter-spacing:1.2px;opacity:.85}.top h1{font-size:25px;margin:8px 0}.top p{margin:0;opacity:.9;font-size:14px}.wrap{max-width:620px;margin:0 auto;padding:16px}.card{background:white;border-radius:18px;padding:18px;margin:0 0 14px;box-shadow:0 4px 18px #102a4310}.label{font-size:13px;color:#5b6b7b;margin-bottom:7px;display:block}select,button{font:inherit;width:100%;padding:13px;border-radius:12px;border:1px solid #d3deea;background:white;color:#172b4d}button{background:var(--blue);color:white;border:0;font-weight:650;margin-top:10px;cursor:pointer}.secondary{background:#eaf4ff;color:#1769aa;border:1px solid #b8d8f5}.scanbox{background:#f5f9ff;border:1px dashed #7aaee0;border-radius:14px;padding:14px;margin-top:12px}.scanicon{font-size:38px;text-align:center;margin:4px 0}.eyebrow{font-size:12px;font-weight:700;color:var(--blue);letter-spacing:.6px}.big{font-size:30px;font-weight:800;margin:4px 0}.muted{font-size:13px;color:#66788a}.row{display:flex;gap:12px;align-items:center}.pill{background:#e3f7ed;color:var(--green);font-weight:700;font-size:12px;border-radius:999px;padding:6px 10px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.tile{background:#f5f8fc;border-radius:12px;padding:12px}.tile b{display:block;margin-top:4px}.route{border-left:3px solid #b6d7f5;padding:4px 0 4px 14px;margin:10px 0}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#1769aa;margin-right:8px}.notice{background:#fff5dc;color:#76520a;border-radius:12px;padding:12px;font-size:12px;line-height:1.5}.hidden{display:none}.camera-frame{width:100%;overflow:hidden;border-radius:12px;margin-top:12px}.camera-frame video{width:100%}.scan-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.scan-actions button{margin-top:10px}@media(min-width:500px){.top{padding-left:max(18px,calc((100vw - 584px)/2))}}
+</style></head>
+<body>
+<header class="top"><div class="brand">RAVINDRA COLLEGE</div><h1>🚌 Bus Tracker</h1><p>Scan a stop QR code to view bus details</p></header>
+<main class="wrap">
+ <section class="card"><div class="eyebrow">QR SCAN OPTION · DEMO MODE</div><h2 style="margin:6px 0 8px;font-size:19px">Scan a bus-stop QR code</h2><p class="muted">Choose real camera scanning or use the manual demo if camera access is unavailable.</p><button id="scan" class="secondary">▦ Scan QR</button><div id="scanPanel" class="scanbox hidden"><div class="scanicon">▦</div><h3 style="text-align:center;margin:4px 0 8px">QR scanner</h3><p class="muted" style="text-align:center">Tap “Start camera” and allow camera access when your browser asks. Point the camera at a Ravindra College bus-stop QR code.</p><div class="scan-actions"><button id="startCamera">Start camera</button><button id="stopCamera" class="secondary">Stop camera</button></div><div id="reader" class="camera-frame"></div><p id="scanStatus" class="muted" role="status">Camera is off.</p><div style="border-top:1px solid #dce5ef;margin-top:12px;padding-top:12px"><label class="label" for="stop">Or choose a stop manually (demo)</label><select id="stop"><option value="gate">College Main Gate</option><option value="hanamkonda">Hanamkonda Stop</option><option value="market">Market Junction</option></select><button id="show" class="secondary">Show selected stop</button></div></div><p class="muted" style="margin-bottom:0">Camera access is requested only after you tap “Start camera”. Camera scanning usually requires the page to be hosted on HTTPS.</p></section>
+ <section class="card" id="details"><div class="row" style="justify-content:space-between"><div><div class="eyebrow">SELECTED STOP</div><h2 id="stopName" style="margin:5px 0">College Main Gate</h2></div><span class="pill">Demo data</span></div>
+ <div class="grid"><div class="tile"><span class="muted">Bus number</span><b id="bus">RC-01</b></div><div class="tile"><span class="muted">Estimated arrival</span><b id="eta">8 minutes</b></div><div class="tile"><span class="muted">Last location</span><b id="location">College Road</b></div><div class="tile"><span class="muted">Status</span><b>On route</b></div></div>
+ <h3 style="font-size:16px;margin:18px 0 8px">Route</h3><div id="route"><div class="route"><span class="dot"></span>College Main Gate</div><div class="route"><span class="dot"></span>Hanamkonda</div><div class="route"><span class="dot"></span>College Campus</div></div>
+ <div class="notice">⚠️ Demonstration only: bus location and arrival times are examples, not live GPS data.</div></section>
+ <section class="card"><h3 style="margin:0 0 8px;font-size:16px">How to show this in your project</h3><ol style="padding-left:20px;line-height:1.65;font-size:14px;margin-bottom:0"><li>Scan the printed demo QR using your phone's normal camera.</li><li>Open this demo page separately.</li><li>Select the same bus stop and tap “Show bus information”.</li></ol><p class="muted">Camera permission is requested only if you choose to start the scanner.</p></section>
+</main>
+<script>
+const data={gate:{name:'College Main Gate',bus:'RC-01',eta:'8 minutes',location:'College Road',route:['College Main Gate','Hanamkonda','College Campus']},hanamkonda:{name:'Hanamkonda Stop',bus:'RC-01',eta:'5 minutes',location:'Near Hanamkonda',route:['Hanamkonda Stop','College Road','College Campus']},market:{name:'Market Junction',bus:'RC-02',eta:'12 minutes',location:'Market Junction Road',route:['Market Junction','Main Gate','College Campus']}};
+document.getElementById('scan').addEventListener('click',()=>{document.getElementById('scanPanel').classList.toggle('hidden');});
+document.getElementById('show').addEventListener('click',()=>{const d=data[document.getElementById('stop').value];document.getElementById('stopName').textContent=d.name;document.getElementById('bus').textContent=d.bus;document.getElementById('eta').textContent=d.eta;document.getElementById('location').textContent=d.location;document.getElementById('route').innerHTML=d.route.map(x=>'<div class="route"><span class="dot"></span>'+x+'</div>').join('');document.getElementById('details').scrollIntoView({behavior:'smooth',block:'start'});});
+
+let qrScanner = null;
+function chooseStopFromQr(decodedText) {
+  const text = String(decodedText || '').toLowerCase();
+  let key = null;
+  if (text.includes('hanamkonda')) key = 'hanamkonda';
+  else if (text.includes('market')) key = 'market';
+  else if (text.includes('main gate') || text.includes('college road') || text.includes('gate') || text.includes('rc-01')) key = 'gate';
+  if (!key) {
+    document.getElementById('scanStatus').textContent = 'QR scanned, but it does not match a demo stop. Use a Ravindra College demo QR code.';
+    return;
+  }
+  document.getElementById('stop').value = key;
+  renderStop(key);
+  document.getElementById('scanStatus').textContent = 'QR scanned successfully: ' + data[key].name;
+  stopCamera();
+  document.getElementById('details').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function renderStop(key) {
+  const d = data[key];
+  document.getElementById('stopName').textContent=d.name;
+  document.getElementById('bus').textContent=d.bus;
+  document.getElementById('eta').textContent=d.eta;
+  document.getElementById('location').textContent=d.location;
+  document.getElementById('route').innerHTML=d.route.map(x=>'<div class="route"><span class="dot"></span>'+x+'</div>').join('');
+}
+function stopCamera() {
+  if (qrScanner) { qrScanner.stop().catch(()=>{}); qrScanner.clear(); qrScanner=null; }
+}
+document.getElementById('startCamera').addEventListener('click', async () => {
+  const status = document.getElementById('scanStatus');
+  status.textContent = 'Starting camera…';
+  try {
+    if (!window.isSecureContext) throw new Error('For camera scanning, open this app from an HTTPS website. A downloaded HTML file may not have camera access.');
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('This browser does not support camera scanning. Try Chrome on Android.');
+    if (!window.Html5Qrcode) throw new Error('Scanner library could not load. Check your internet connection and reload the page.');
+    qrScanner = new Html5Qrcode('reader');
+    await qrScanner.start({facingMode:'environment'}, {fps:10, qrbox:{width:240,height:240}}, chooseStopFromQr, () => {});
+    status.textContent = 'Camera is on. Point it at the QR code.';
+  } catch (err) {
+    status.textContent = err && err.message ? err.message : 'Could not start camera. Check browser permission and try again.';
+    stopCamera();
+  }
+});
+document.getElementById('stopCamera').addEventListener('click', () => { stopCamera(); document.getElementById('scanStatus').textContent='Camera stopped.'; });
+document.getElementById('show').addEventListener('click',()=>{renderStop(document.getElementById('stop').value);document.getElementById('details').scrollIntoView({behavior:'smooth',block:'start'});});
+</script><script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script></body></html>
