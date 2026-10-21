@@ -8,7 +8,6 @@
 
   <link rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
@@ -18,7 +17,7 @@
     body {
       margin: 0;
       font-family: Arial, sans-serif;
-      background: #f2f5fa;
+      background: #f1f5f9;
       color: #172033;
     }
 
@@ -30,17 +29,17 @@
     }
 
     header h2 { margin: 0 0 8px; }
-    header p { margin: 0; }
+    header p { margin: 0; font-size: 14px; }
 
     .container {
-      max-width: 700px;
+      max-width: 750px;
       margin: auto;
-      padding: 16px;
+      padding: 15px;
     }
 
     .card {
       background: white;
-      padding: 18px;
+      padding: 17px;
       margin-bottom: 16px;
       border-radius: 14px;
       box-shadow: 0 3px 12px #00000012;
@@ -50,7 +49,7 @@
       background: #1764c0;
       color: white;
       border: 0;
-      padding: 13px 18px;
+      padding: 13px;
       border-radius: 8px;
       font-size: 16px;
       width: 100%;
@@ -60,7 +59,6 @@
 
     button:disabled {
       background: #8b9bb0;
-      cursor: not-allowed;
     }
 
     #reader {
@@ -71,7 +69,7 @@
 
     #map {
       width: 100%;
-      height: 380px;
+      height: 350px;
       border-radius: 10px;
     }
 
@@ -84,14 +82,59 @@
     }
 
     .hint {
-      color: #566174;
-      font-size: 14px;
+      font-size: 13px;
+      color: #5b6575;
       line-height: 1.5;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .info-box {
+      background: #f4f7fb;
+      border: 1px solid #e1e8f0;
+      border-radius: 10px;
+      padding: 13px;
+      min-width: 0;
+    }
+
+    .info-label {
+      color: #5b6575;
+      font-size: 12px;
+      margin-bottom: 7px;
+    }
+
+    .info-value {
+      font-size: 17px;
+      font-weight: bold;
+      overflow-wrap: anywhere;
+    }
+
+    .eta-value {
+      color: #1764c0;
+      font-size: 23px;
+    }
+
+    .status-pill {
+      display: inline-block;
+      padding: 5px 9px;
+      background: #e0f5e8;
+      color: #176534;
+      border-radius: 20px;
+      font-size: 12px;
     }
 
     .bus-icon {
       font-size: 27px;
       text-align: center;
+    }
+
+    @media (max-width: 380px) {
+      .info-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -103,12 +146,13 @@
 </header>
 
 <main class="container">
+
   <section class="card">
     <h3>Scan Bus Stop QR Code</h3>
     <p class="hint">
-      Keep the QR code steady in front of the camera.
-      The same valid code must be detected for 2 seconds
-      before the map opens.
+      Keep your QR code steady for 2 seconds.
+      After successful scanning, the camera closes automatically
+      and the map opens.
     </p>
 
     <button id="startBtn" onclick="startScan()">
@@ -118,16 +162,67 @@
     <div id="reader"></div>
 
     <div id="scanStatus" class="status" aria-live="polite">
-      Please scan a valid bus stop QR code to view the map.
+      Scan a valid bus stop QR code to view bus information.
     </div>
   </section>
 
-  <section id="mapSection" class="card" style="display:none">
-    <h3>Bus Location Map</h3>
-    <div id="map"></div>
-    <div id="busDetails" class="status"></div>
-    <button onclick="scanAgain()">Scan Another QR Code</button>
+  <section id="mapSection" style="display:none">
+
+    <div class="card">
+      <h3>Bus Location Map</h3>
+      <div id="map"></div>
+      <p class="hint">
+        The moving bus and route are simulated for demonstration.
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>Bus Information</h3>
+
+      <div class="info-grid">
+        <div class="info-box">
+          <div class="info-label">Bus Number</div>
+          <div class="info-value" id="busNumber">1</div>
+        </div>
+
+        <div class="info-box">
+          <div class="info-label">Selected Bus Stop</div>
+          <div class="info-value" id="selectedStop">College Campus</div>
+        </div>
+
+        <div class="info-box">
+          <div class="info-label">Estimated Arrival</div>
+          <div class="info-value eta-value" id="arrivalTime">
+            Calculating...
+          </div>
+        </div>
+
+        <div class="info-box">
+          <div class="info-label">Bus Status</div>
+          <div class="info-value">
+            <span id="busStatus" class="status-pill">On the way</span>
+          </div>
+        </div>
+
+        <div class="info-box">
+          <div class="info-label">Current Demo Location</div>
+          <div class="info-value" id="currentLocation">Starting point</div>
+        </div>
+
+        <div class="info-box">
+          <div class="info-label">Last Updated</div>
+          <div class="info-value" id="lastUpdated">--:--:--</div>
+        </div>
+      </div>
+
+      <p class="hint">
+        Arrival times are simulated estimates, not live GPS predictions.
+      </p>
+
+      <button onclick="scanAgain()">Scan Another QR Code</button>
+    </div>
   </section>
+
 </main>
 
 <script>
@@ -142,9 +237,16 @@
 
   let map = null;
   let busMarker = null;
-  let routeLine = null;
   let busTimer = null;
   let busPosition = 0;
+  let selectedBusIndex = 0;
+
+  // QR code 0 = Bus 1, QR code 1 = Bus 2, QR code 2 = Bus 3
+  const buses = [
+    { number: "1", name: "Bus 1" },
+    { number: "2", name: "Bus 2" },
+    { number: "3", name: "Bus 3" }
+  ];
 
   const stops = [
     {
@@ -164,33 +266,31 @@
     }
   ];
 
+  const route = [
+    [15.8280, 78.0370],
+    [15.8170, 78.0500],
+    [15.7952, 78.0771],
+    [15.7958, 78.0780]
+  ];
+
   function matchQR(decodedText) {
     const value = decodedText.trim();
 
-    // Accept a URL such as https://example.com/?stop=2
     try {
       const url = new URL(value);
-      const stopParam = url.searchParams.get("stop");
+      const stop = url.searchParams.get("stop");
 
-      if (stopParam !== null &&
-          /^[0-2]$/.test(stopParam)) {
-        return Number(stopParam);
+      if (stop !== null && /^[0-2]$/.test(stop)) {
+        return Number(stop);
       }
-    } catch (e) {
-      // The scanned value may be plain text.
-    }
+    } catch (e) {}
 
-    const normalized = value.toLowerCase();
+    const text = value.toLowerCase();
 
-    if (normalized === "0" ||
-        normalized === "1" ||
-        normalized === "2") {
-      return Number(normalized);
-    }
-
-    if (normalized === "kurnool bus stand") return 0;
-    if (normalized === "college main gate") return 1;
-    if (normalized === "college campus") return 2;
+    if (/^[0-2]$/.test(text)) return Number(text);
+    if (text === "kurnool bus stand") return 0;
+    if (text === "college main gate") return 1;
+    if (text === "college campus") return 2;
 
     return -1;
   }
@@ -209,12 +309,12 @@
   function onScanSuccess(decodedText) {
     if (!scanning || processingScan) return;
 
-    const stopIndex = matchQR(decodedText);
+    const index = matchQR(decodedText);
 
-    if (stopIndex === -1) {
+    if (index === -1) {
       resetCandidate();
       document.getElementById("scanStatus").textContent =
-        "Invalid QR code. Please scan a Ravindra Bus Tracker QR code.";
+        "Invalid QR code. Scan a valid bus stop QR code.";
       return;
     }
 
@@ -232,12 +332,12 @@
     const remaining = Math.max(0, 2000 - elapsed);
 
     document.getElementById("scanStatus").textContent =
-      "QR detected. Hold it steady... " +
-      Math.ceil(remaining / 1000) + " second(s) remaining.";
+      "QR detected. Keep it steady for " +
+      Math.ceil(remaining / 1000) + " more second(s).";
 
     if (elapsed >= 2000) {
       processingScan = true;
-      finishScan(stopIndex);
+      finishScan(index);
       return;
     }
 
@@ -245,12 +345,10 @@
       checkTimer = setTimeout(() => {
         checkTimer = null;
 
-        // If the code is no longer being detected, require
-        // the user to hold it steady and try again.
         if (Date.now() - lastSeen > 700) {
           resetCandidate();
           document.getElementById("scanStatus").textContent =
-            "QR lost. Hold the QR code steadily in front of the camera.";
+            "QR lost. Hold the QR code steady and try again.";
         }
       }, 2100);
     }
@@ -261,13 +359,13 @@
 
     if (typeof Html5Qrcode === "undefined") {
       document.getElementById("scanStatus").textContent =
-        "Scanner library did not load. Check your internet connection and refresh.";
+        "Scanner library failed to load. Check your internet connection.";
       return;
     }
 
     document.getElementById("startBtn").disabled = true;
     document.getElementById("scanStatus").textContent =
-      "Opening camera... Please allow camera access.";
+      "Opening camera...";
 
     resetCandidate();
 
@@ -280,23 +378,22 @@
         {
           fps: 10,
           qrbox: { width: 230, height: 230 },
-          aspectRatio: 1.0
+          aspectRatio: 1
         },
         onScanSuccess,
-        function () {
-          // Ignore frames where no QR code is detected.
-        }
+        function () {}
       );
 
       document.getElementById("scanStatus").textContent =
-        "Camera ready. Hold a valid QR code steady for 2 seconds.";
+        "Camera ready. Hold the QR code steady for 2 seconds.";
+
     } catch (error) {
       scanning = false;
       scanner = null;
       document.getElementById("startBtn").disabled = false;
 
       document.getElementById("scanStatus").textContent =
-        "Could not start camera. Allow camera permission and open the website using HTTPS.";
+        "Camera could not start. Allow camera access and use HTTPS.";
     }
   }
 
@@ -304,48 +401,94 @@
     scanning = false;
     resetCandidate();
 
-    const currentScanner = scanner;
+    const current = scanner;
     scanner = null;
 
-    if (currentScanner) {
-      try {
-        await currentScanner.stop();
-      } catch (e) {
-        // Camera may already be stopped.
-      }
-
-      try {
-        currentScanner.clear();
-      } catch (e) {
-        // Reader may already be cleared.
-      }
+    if (current) {
+      try { await current.stop(); } catch (e) {}
+      try { current.clear(); } catch (e) {}
     }
 
     document.getElementById("reader").innerHTML = "";
     document.getElementById("startBtn").disabled = false;
   }
 
-  async function finishScan(stopIndex) {
+  async function finishScan(index) {
     document.getElementById("scanStatus").textContent =
-      "QR confirmed. Closing scanner...";
+      "QR confirmed. Closing camera...";
 
-    // Close the camera before revealing the map.
     await stopScan();
 
+    selectedBusIndex = index;
+
     document.getElementById("mapSection").style.display = "block";
-    showMap(stopIndex);
+    document.getElementById("busNumber").textContent =
+      buses[selectedBusIndex].number;
+    document.getElementById("selectedStop").textContent =
+      stops[index].name;
+
+    showMap(index);
 
     document.getElementById("scanStatus").textContent =
       "QR scanned successfully. Camera closed.";
+
     document.getElementById("mapSection").scrollIntoView({
       behavior: "smooth",
       block: "start"
     });
   }
 
-  function showMap(stopIndex) {
-    const selectedStop = stops[stopIndex];
+  function getRoutePoint(position) {
+    const max = route.length - 1;
+    const p = Math.max(0, Math.min(position, max));
+    const segment = Math.min(Math.floor(p), max - 1);
+    const fraction = p - segment;
 
+    const a = route[segment];
+    const b = route[segment + 1];
+
+    return [
+      a[0] + (b[0] - a[0]) * fraction,
+      a[1] + (b[1] - a[1]) * fraction
+    ];
+  }
+
+  function getCurrentLocation(position) {
+    if (position < 0.8) return "Kurnool Bus Stand";
+    if (position < 1.8) return "On the route to college";
+    if (position < 2.5) return "Near College Main Gate";
+    return "Near College Campus";
+  }
+
+  function updateBusInformation(targetIndex) {
+    const target = stops[targetIndex];
+
+    let distance = targetIndex - busPosition;
+
+    if (distance < 0) {
+      distance += route.length - 1;
+    }
+
+    const eta = Math.ceil(distance);
+    let status = "On the way";
+    let etaText = eta + " minute(s)";
+
+    if (distance < 0.05) {
+      status = "Arrived";
+      etaText = "Arrived";
+    } else if (distance <= 1) {
+      status = "Approaching";
+    }
+
+    document.getElementById("arrivalTime").textContent = etaText;
+    document.getElementById("busStatus").textContent = status;
+    document.getElementById("currentLocation").textContent =
+      getCurrentLocation(busPosition);
+    document.getElementById("lastUpdated").textContent =
+      new Date().toLocaleTimeString("en-IN");
+  }
+
+  function showMap(targetIndex) {
     if (busTimer) {
       clearInterval(busTimer);
       busTimer = null;
@@ -355,13 +498,13 @@
       map.remove();
       map = null;
       busMarker = null;
-      routeLine = null;
     }
 
     busPosition = 0;
 
     map = L.map("map").setView(
-      [selectedStop.lat, selectedStop.lng], 14
+      [stops[targetIndex].lat, stops[targetIndex].lng],
+      13
     );
 
     L.tileLayer(
@@ -372,20 +515,13 @@
       }
     ).addTo(map);
 
-    stops.forEach((stop) => {
+    stops.forEach(stop => {
       L.marker([stop.lat, stop.lng])
         .addTo(map)
         .bindPopup(stop.name);
     });
 
-    const routeCoordinates = [
-      [stops[0].lat, stops[0].lng],
-      [15.8170, 78.0500],
-      [stops[1].lat, stops[1].lng],
-      [stops[2].lat, stops[2].lng]
-    ];
-
-    routeLine = L.polyline(routeCoordinates, {
+    L.polyline(route, {
       color: "#1764c0",
       weight: 5
     }).addTo(map);
@@ -397,23 +533,24 @@
       iconAnchor: [18, 18]
     });
 
-    busMarker = L.marker(routeCoordinates[0], {
+    busMarker = L.marker(getRoutePoint(busPosition), {
       icon: busIcon
-    }).addTo(map).bindPopup("Demo bus location");
+    }).addTo(map).bindPopup("Simulated demo bus");
 
-    document.getElementById("busDetails").innerHTML =
-      "<strong>Selected stop:</strong> " + selectedStop.name +
-      "<br><strong>Bus:</strong> Simulated demo bus" +
-      "<br><strong>Status:</strong> Moving on a sample route" +
-      "<br><span class='hint'>The route and coordinates are illustrative, not verified live bus GPS data.</span>";
-
-    setTimeout(() => map.invalidateSize(), 250);
+    updateBusInformation(targetIndex);
 
     busTimer = setInterval(() => {
-      busPosition = (busPosition + 1) % routeCoordinates.length;
+      busPosition += 0.05;
 
-      busMarker.setLatLng(routeCoordinates[busPosition]);
+      if (busPosition >= route.length - 1) {
+        busPosition = 0;
+      }
+
+      busMarker.setLatLng(getRoutePoint(busPosition));
+      updateBusInformation(targetIndex);
     }, 3000);
+
+    setTimeout(() => map.invalidateSize(), 300);
   }
 
   async function scanAgain() {
@@ -426,12 +563,9 @@
       map.remove();
       map = null;
       busMarker = null;
-      routeLine = null;
     }
 
     document.getElementById("mapSection").style.display = "none";
-    document.getElementById("scanStatus").textContent =
-      "Ready to scan another QR code.";
 
     processingScan = false;
     resetCandidate();
@@ -440,4 +574,4 @@
   }
 </script>
 </body>
-</html>
+    </html>
