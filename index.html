@@ -5,186 +5,329 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ravindra College Bus Tracker</title>
+
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
 <style>
-body{margin:0;font-family:Arial,sans-serif;background:#f0f5fb;color:#183047}
-header{background:#12395b;color:white;padding:22px;text-align:center}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f1f5fa;color:#183047}
+header{background:#12395b;color:white;text-align:center;padding:24px 12px}
 header h1{margin:8px 0}
 main{max-width:900px;margin:18px auto;padding:12px}
 .card{background:white;padding:18px;margin-bottom:16px;border-radius:15px;box-shadow:0 3px 12px #0001}
-button,select{padding:12px;border:0;border-radius:8px;margin:5px;font-size:15px}
-button{background:#1769aa;color:white}
-select{border:1px solid #ccc;background:white}
+button{padding:12px 16px;border:0;border-radius:9px;background:#1769aa;color:white;font-size:15px;font-weight:bold;margin:5px;cursor:pointer}
+button:disabled{opacity:.5}
+#reader{max-width:450px;margin:15px auto;overflow:hidden}
 #map{height:360px;border-radius:12px}
+.small{font-size:13px;color:#607286;line-height:1.5}
+.status{padding:10px;background:#edf5fc;border-radius:8px;margin-top:12px}
 .info{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.info div{background:#edf5fc;padding:12px;border-radius:9px}
-.small{font-size:13px;color:#607286}
-#reader{max-width:420px;margin-top:12px}
+.info div{background:#edf5fc;padding:12px;border-radius:9px;overflow-wrap:anywhere}
+#mapSection{display:none}
+#details{display:none}
 </style>
 </head>
+
 <body>
 <header>
 <div>RAVINDRA COLLEGE OF ENGINEERING FOR WOMEN</div>
 <h1>🚌 Bus Tracker</h1>
 <p>Kurnool, Andhra Pradesh</p>
 </header>
+
 <main>
-<section class="card">
-<h2>📷 Scan Bus Stop QR</h2>
-<p>Scan a QR code containing a stop name or stop number.</p>
-<button onclick="startScan()">Start QR Scanner</button>
-<button onclick="stopScan()">Stop Scanner</button>
+<section class="card" id="scanSection">
+<h2>📷 Scan Your Bus Stop QR Code</h2>
+<p class="small">
+First scan the QR code at your bus stop.
+After a successful scan, the camera will close automatically
+and your bus location map will appear.
+</p>
+
+<button id="startButton" onclick="startScan()">Start QR Scanner</button>
+<button id="stopButton" onclick="stopScan()" disabled>Stop Scanner</button>
+
 <div id="reader"></div>
-<p id="scanStatus" class="small">Camera is turned off.</p>
-<label for="stopSelect">Or select a bus stop:</label><br>
-<select id="stopSelect" onchange="selectStop(+this.value)">
-<option value="0">College Main Gate</option>
-<option value="1">Kurnool Bus Stand</option>
-<option value="2">College Campus</option>
-</select>
+<div class="status" id="scanStatus" aria-live="polite">
+Ready to scan. Tap Start QR Scanner.
+</div>
 </section>
 
-<section class="card">
+<section class="card" id="mapSection">
 <h2>📍 Bus Location Map</h2>
-<p><b style="color:green">● DEMO MODE — simulated location</b></p>
+<p><strong style="color:green">● DEMO MODE — Simulated location</strong></p>
 <div id="map"></div>
-<p class="small">The bus marker moves automatically along the sample route. It is not live GPS.</p>
+<p class="small">
+The bus marker moves along a sample route. This is not real-time GPS.
+</p>
+<button onclick="scanAgain()">Scan Another QR Code</button>
 </section>
 
-<section class="card">
+<section class="card" id="details">
 <h2>Bus Information</h2>
 <div class="info">
-<div>Bus Number<br><b>RC-01</b></div>
-<div>Bus Status<br><b>On Route (Demo)</b></div>
-<div>Selected Stop<br><b id="selectedStop">College Main Gate</b></div>
-<div>Estimated Arrival<br><b id="eta">5 minutes</b></div>
+<div>Bus Number<br><strong>RC-01</strong></div>
+<div>Bus Status<br><strong>On Route (Demo)</strong></div>
+<div>Selected Stop<br><strong id="selectedStop">-</strong></div>
+<div>Estimated Arrival<br><strong id="eta">Calculating...</strong></div>
 </div>
-<p id="busPosition" class="small">Simulated bus is starting its route.</p>
+<p id="busPosition" class="small">Waiting for scan.</p>
 </section>
+
 <section class="card">
-<h3>QR code values</h3>
-<p class="small">Create QR codes containing one of these values:</p>
-<ul>
-<li>College Main Gate</li>
-<li>Kurnool Bus Stand</li>
-<li>College Campus</li>
-<li>0, 1, or 2</li>
+<h3>QR Code Instructions</h3>
+<p class="small">Your QR code must contain one of these exact stop names or numbers:</p>
+<ul class="small">
+<li>College Main Gate (or 0)</li>
+<li>Kurnool Bus Stand (or 1)</li>
+<li>College Campus (or 2)</li>
 </ul>
+<p class="small">
+You can also use a URL ending in ?stop=0, ?stop=1 or ?stop=2.
+</p>
 </section>
 </main>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
 <script>
-// Approximate college-area coordinates for demonstration.
-// Verify and replace stop coordinates with actual stop locations.
+// Approximate/sample locations for demonstration.
+// Replace with verified real bus-stop coordinates when available.
 const stops=[
-{name:"College Main Gate",lat:15.7952,lng:78.0771},
-{name:"Kurnool Bus Stand",lat:15.8280,lng:78.0370},
-{name:"College Campus",lat:15.7958,lng:78.0780}
+ {name:"College Main Gate",lat:15.7952,lng:78.0771},
+ {name:"Kurnool Bus Stand",lat:15.8280,lng:78.0370},
+ {name:"College Campus",lat:15.7958,lng:78.0780}
 ];
 
-const map=L.map("map").setView([15.7952,78.0771],13);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
-maxZoom:19,attribution:"© OpenStreetMap contributors"
-}).addTo(map);
+let map=null;
+let bus=null;
+let route=null;
+let scanner=null;
+let scanning=false;
+let processingScan=false;
+let segment=0;
+let progress=0;
+let selected=0;
+let movementTimer=null;
 
-const route=L.polyline(stops.map(s=>[s.lat,s.lng]),{
-color:"#1769aa",weight:5
-}).addTo(map);
+function initialiseMap(){
+ if(map) return;
 
-stops.forEach((s,i)=>{
-L.marker([s.lat,s.lng]).addTo(map)
-.bindPopup(s.name+" (Stop "+(i+1)+")");
-});
+ map=L.map("map").setView([stops[0].lat,stops[0].lng],13);
 
-const busIcon=L.divIcon({
-html:"<div style='font-size:27px'>🚌</div>",
-className:"",iconSize:[35,35],iconAnchor:[17,17]
-});
-let segment=0,progress=0,selected=0,scanner=null;
-let bus=L.marker([stops[0].lat,stops[0].lng],{icon:busIcon})
-.addTo(map).bindPopup("RC-01 — Simulated Bus");
-map.fitBounds(route.getBounds(),{padding:[25,25]});
+ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+  maxZoom:19,
+  attribution:"© OpenStreetMap contributors"
+ }).addTo(map);
 
-function selectStop(i){
-selected=Math.max(0,Math.min(stops.length-1,i));
-document.getElementById("stopSelect").value=selected;
-document.getElementById("selectedStop").textContent=stops[selected].name;
-map.flyTo([stops[selected].lat,stops[selected].lng],14);
-L.popup().setLatLng([stops[selected].lat,stops[selected].lng])
-.setContent(stops[selected].name).openOn(map);
-document.getElementById("eta").textContent=
-(Math.max(1,Math.abs(selected-segment)*4+2))+" minutes";
+ route=L.polyline(stops.map(s=>[s.lat,s.lng]),{
+  color:"#1769aa",
+  weight:5
+ }).addTo(map);
+
+ stops.forEach((s,i)=>{
+  L.marker([s.lat,s.lng]).addTo(map)
+   .bindPopup(s.name+" — Stop "+(i+1));
+ });
+
+ const icon=L.divIcon({
+  html:"<div style='font-size:28px'>🚌</div>",
+  className:"",
+  iconSize:[35,35],
+  iconAnchor:[17,17]
+ });
+
+ bus=L.marker([stops[0].lat,stops[0].lng],{icon})
+  .addTo(map)
+  .bindPopup("RC-01 — Simulated Bus");
+
+ map.fitBounds(route.getBounds(),{padding:[25,25]});
 }
 
-function matchQR(value){
-const v=value.trim().toLowerCase();
-const n=Number(v);
-if(/^[0-2]$/.test(v))return n;
-const i=stops.findIndex(s=>s.name.toLowerCase()===v);
-if(i>=0)return i;
-try{
-const u=new URL(value);
-const q=u.searchParams.get("stop");
-if(q!==null&&/^[0-2]$/.test(q))return Number(q);
-}catch(e){}
-return -1;
+function selectStop(i){
+ selected=i;
+ segment=i;
+ progress=0;
+
+ document.getElementById("selectedStop").textContent=stops[i].name;
+ document.getElementById("eta").textContent="2 minutes";
+ document.getElementById("busPosition").textContent=
+  "Simulated bus travelling near "+stops[i].name+".";
+
+ initialiseMap();
+
+ // Put the bus near the selected stop to start the demonstration.
+ bus.setLatLng([stops[i].lat,stops[i].lng]);
+
+ // Let the browser display the map before resizing it.
+ requestAnimationFrame(()=>{
+  map.invalidateSize();
+  map.flyTo([stops[i].lat,stops[i].lng],14);
+ });
+
+ if(movementTimer) clearInterval(movementTimer);
+ movementTimer=setInterval(moveBus,1000);
+}
+
+function matchQR(raw){
+ const value=String(raw||"").trim();
+
+ try{
+  const url=new URL(value);
+  const param=url.searchParams.get("stop");
+  if(param!==null && /^[0-2]$/.test(param)) return Number(param);
+ }catch(e){}
+
+ if(/^[0-2]$/.test(value)) return Number(value);
+
+ const normalized=value.toLowerCase().replace(/[^a-z0-9]/g,"");
+ return stops.findIndex(s=>
+  s.name.toLowerCase().replace(/[^a-z0-9]/g,"")===normalized
+ );
 }
 
 async function startScan(){
-if(!window.Html5Qrcode){
-document.getElementById("scanStatus").textContent="Scanner library failed to load. Check internet.";
-return;
-}
-if(scanner)return;
-scanner=new Html5Qrcode("reader");
-try{
-await scanner.start({facingMode:"environment"},
-{fps:10,qrbox:{width:220,height:220}},
-async text=>{
-const i=matchQR(text);
-if(i<0){
-document.getElementById("scanStatus").textContent="QR not recognised. Use a supported stop name or number.";
-return;
-}
-selectStop(i);
-document.getElementById("scanStatus").textContent="Scanned: "+stops[i].name;
-await stopScan();
-},()=>{});
-document.getElementById("scanStatus").textContent="Camera active. Point at a QR code.";
-}catch(e){
-scanner=null;
-document.getElementById("scanStatus").textContent="Camera unavailable. Allow camera permission and use HTTPS.";
-}
+ if(scanning) return;
+
+ if(!window.Html5Qrcode){
+  document.getElementById("scanStatus").textContent=
+   "Scanner could not load. Check your internet connection.";
+  return;
+ }
+
+ processingScan=false;
+ scanner=new Html5Qrcode("reader");
+
+ try{
+  await scanner.start(
+   {facingMode:"environment"},
+   {fps:10,qrbox:{width:230,height:230}},
+   async decodedText=>{
+    if(processingScan) return;
+
+    const index=matchQR(decodedText);
+
+    if(index<0){
+     document.getElementById("scanStatus").textContent=
+      "QR not recognised. Keep scanning or try a valid bus-stop QR.";
+     return;
+    }
+
+    // Prevent duplicate camera callbacks.
+    processingScan=true;
+
+    document.getElementById("scanStatus").textContent=
+     "QR scanned! Closing camera...";
+
+    // Close the scanner before showing the map.
+    await stopScan();
+
+    document.getElementById("scanStatus").textContent=
+     "Successfully scanned: "+stops[index].name;
+
+    // Reveal the map and details only after successful scan.
+    document.getElementById("mapSection").style.display="block";
+    document.getElementById("details").style.display="block";
+
+    selectStop(index);
+
+    // Scroll to the newly visible map.
+    document.getElementById("mapSection").scrollIntoView({
+     behavior:"smooth",
+     block:"start"
+    });
+   },
+   ()=>{}
+  );
+
+  scanning=true;
+  document.getElementById("startButton").disabled=true;
+  document.getElementById("stopButton").disabled=false;
+  document.getElementById("scanStatus").textContent=
+   "Camera active. Point it at the bus-stop QR code.";
+
+ }catch(error){
+  scanner=null;
+  scanning=false;
+  document.getElementById("scanStatus").textContent=
+   "Camera could not start. Allow camera permission and use the HTTPS website.";
+ }
 }
 
 async function stopScan(){
-if(scanner){
-try{await scanner.stop();await scanner.clear();}catch(e){}
-scanner=null;
+ const current=scanner;
+
+ // Mark camera as unavailable immediately.
+ scanning=false;
+ scanner=null;
+
+ document.getElementById("startButton").disabled=false;
+ document.getElementById("stopButton").disabled=true;
+
+ if(current){
+  try{
+   await current.stop();
+  }catch(e){}
+  try{
+   await current.clear();
+  }catch(e){}
+ }
+
+ document.getElementById("reader").innerHTML="";
 }
-document.getElementById("scanStatus").textContent="Camera is turned off.";
+
+function scanAgain(){
+ if(movementTimer){
+  clearInterval(movementTimer);
+  movementTimer=null;
+ }
+
+ if(map){
+  map.remove();
+  map=null;
+  bus=null;
+  route=null;
+ }
+
+ document.getElementById("mapSection").style.display="none";
+ document.getElementById("details").style.display="none";
+ document.getElementById("scanStatus").textContent=
+  "Ready to scan another bus-stop QR code.";
+
+ processingScan=false;
+
+ window.scrollTo({top:0,behavior:"smooth"});
 }
 
 function moveBus(){
-const a=stops[segment],b=stops[(segment+1)%stops.length];
-progress+=0.015;
-if(progress>=1){progress=0;segment=(segment+1)%stops.length;}
-const lat=a.lat+(b.lat-a.lat)*progress;
-const lng=a.lng+(b.lng-a.lng)*progress;
-bus.setLatLng([lat,lng]);
-document.getElementById("busPosition").textContent=
-"Demo bus moving from "+stops[segment].name+
-" toward "+stops[(segment+1)%stops.length].name+".";
-document.getElementById("eta").textContent=
-(Math.max(1,Math.abs(selected-segment)*4+2))+" minutes";
-}
-setInterval(moveBus,1000);
+ const a=stops[segment];
+ const next=(segment+1)%stops.length;
+ const b=stops[next];
 
-const params=new URLSearchParams(location.search);
-const initial=params.get("stop");
-if(initial!==null&&/^[0-2]$/.test(initial))selectStop(+initial);
+ progress+=0.015;
+
+ if(progress>=1){
+  progress=0;
+  segment=next;
+ }
+
+ const lat=a.lat+(b.lat-a.lat)*progress;
+ const lng=a.lng+(b.lng-a.lng)*progress;
+
+ if(bus) bus.setLatLng([lat,lng]);
+
+ document.getElementById("busPosition").textContent=
+  "Demo bus moving from "+stops[segment].name+
+  " toward "+stops[(segment+1)%stops.length].name+".";
+
+ document.getElementById("eta").textContent=
+  Math.max(1,Math.abs(selected-segment)*4+2)+" minutes";
+}
+
+// Ensure the map is hidden every time the page loads.
+document.getElementById("mapSection").style.display="none";
+document.getElementById("details").style.display="none";
 </script>
 </body>
 </html>
